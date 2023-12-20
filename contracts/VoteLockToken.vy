@@ -13,9 +13,6 @@
 """
 from vyper.interfaces import ERC20
 
-interface RewardPool:
-    def burn(amount: uint256) -> bool: nonpayable
-
 struct Point:
     bias: int128
     slope: int128  # - dweight / dt
@@ -58,10 +55,10 @@ event Supply:
 
 event Initialized:
     token: ERC20
-    reward_pool: RewardPool
+    trasury: address
 
 TOKEN: immutable(ERC20)
-REWARD_POOL: immutable(RewardPool)
+TREASURY: immutable(address)
 
 DAY: constant(uint256) = 86400
 WEEK: constant(uint256) = 7 * 86400  # all future times are rounded by week
@@ -79,18 +76,18 @@ slope_changes: public(HashMap[address, HashMap[uint256, int128]])  # time -> sig
 
 
 @external
-def __init__(token: ERC20, reward_pool: RewardPool):
+def __init__(token: ERC20, treasury: address):
     """
     @notice Contract constructor
     @param token TOKEN token address
-    @param reward_pool Pool for early exit penalties
+    @param treasury Treasury for early exit penalties
     """
     TOKEN = token
-    REWARD_POOL = reward_pool
+    TREASURY = treasury
     self.point_history[self][0].blk = block.number
     self.point_history[self][0].ts = block.timestamp
 
-    log Initialized(token, reward_pool)
+    log Initialized(token, treasury)
 
 
 @view
@@ -331,8 +328,8 @@ def withdraw() -> Withdrawn:
     assert TOKEN.transfer(msg.sender, old_locked.amount - penalty)
     
     if penalty > 0:
-        assert TOKEN.approve(REWARD_POOL.address, penalty)
-        assert REWARD_POOL.burn(penalty)
+        assert TOKEN.approve(TREASURY.address, penalty)
+        assert TREASURY.transfer(msg.sender, penalty)
 
         log Penalty(msg.sender, penalty, block.timestamp)
     
@@ -534,8 +531,8 @@ def token() -> ERC20:
 
 @view
 @external
-def reward_pool() -> RewardPool:
-    return REWARD_POOL
+def treasury() -> address:
+    return TREASURY
 
 
 @view
