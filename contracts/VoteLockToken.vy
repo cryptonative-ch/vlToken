@@ -65,7 +65,7 @@ WEEK: constant(uint256) = 7 * 86400  # all future times are rounded by week
 MAX_LOCK_DURATION: constant(uint256) = 1 * 365 * 86400 / WEEK * WEEK  # 1 year
 SCALE: constant(uint256) = 10 ** 18
 MAX_PENALTY_RATIO: constant(uint256) = SCALE * 3 / 4  # 75% for early exit of max lock
-MAX_N_WEEKS: constant(uint256) = 210 # max lock is 4 years
+MAX_N_WEEKS: constant(uint256) = 209 # max lock is 4 years
 
 supply: public(uint256)
 locked: public(HashMap[address, LockedBalance])
@@ -303,14 +303,18 @@ def withdraw() -> Withdrawn:
     @notice Withdraw lock for a sender
     @dev
         If a lock has expired, sends a full amount to the sender.
-        If a lock is still active, the sender pays a 75% penalty during the first year
+        If a lock is still active, the sender pays a 75% penalty during the first 1/4 of MAX_LOCK_DURATION
         and a linearly decreasing penalty from 75% to 0 based on the remaining lock time.
+
+        for 1/2 MAXTIME vl token with MAX_PENALTY_RATIO = 75% the penalty is 50%
+        starts with 75% on 1/4, hits 50% on 1/2, then 25% on 3/4, 0 at 4/4
     """
     old_locked: LockedBalance = self.locked[msg.sender]
     assert old_locked.amount > 0  # dev: create a lock first to withdraw
     
     time_left: uint256 = 0
     penalty: uint256 = 0
+
 
     if old_locked.end > block.timestamp:
         time_left = min(old_locked.end - block.timestamp, MAX_LOCK_DURATION)
@@ -329,9 +333,9 @@ def withdraw() -> Withdrawn:
     
     if penalty > 0:
         assert TOKEN.approve(TREASURY, penalty)
-        assert TOKEN.transfer(msg.sender, penalty)
+        assert TOKEN.transfer(TREASURY, penalty)
 
-        log Penalty(msg.sender, penalty, block.timestamp)
+        log Penalty(TREASURY, penalty, block.timestamp)
     
     log Withdraw(msg.sender, old_locked.amount - penalty, block.timestamp)
     log Supply(supply_before, supply_before - old_locked.amount, block.timestamp)

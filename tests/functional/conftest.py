@@ -53,10 +53,3 @@ def create_token(project, gov):
         return gov.deploy(project.Token, name)
 
     yield create_token
-
-'''
-@pytest.fixture
-def vl_token_rewards(vl_token_and_reward_pool):
-    (_, vl_token_rewards) = vl_token_and_reward_pool
-    yield vl_token_rewards
-'''
