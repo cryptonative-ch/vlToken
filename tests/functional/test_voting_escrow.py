@@ -18,135 +18,135 @@ def setup_time(chain):
     chain.mine()
 
 
-def test_over_four_years(chain, accounts, yfi, ve_yfi):
+def test_over_four_years(chain, accounts, token, vl_token):
     alice = accounts[0]
     amount = 1000 * 10**18
     power = amount // MAXTIME * MAXTIME
-    yfi.mint(alice, amount * 20, sender=alice)
-    yfi.approve(ve_yfi.address, amount * 20, sender=alice)
+    token.mint(alice, amount * 20, sender=alice)
+    token.approve(vl_token.address, amount * 20, sender=alice)
 
     now = chain.blocks.head.timestamp
     unlock_time = now + MAXTIME + 8 * WEEK + 3600
-    ve_yfi.modify_lock(amount, unlock_time, sender=alice)  # 4 years and one month lock
-    point = ve_yfi.point_history(alice.address, 1)
+    vl_token.modify_lock(amount, unlock_time, sender=alice)  # 4 years and one month lock
+    point = vl_token.point_history(alice.address, 1)
     assert point.bias == power
     assert point.slope == 0
-    assert ve_yfi.totalSupply() == power
+    assert vl_token.totalSupply() == power
     chain.pending_timestamp += WEEK
     chain.mine()
-    assert ve_yfi.totalSupply() == power
+    assert vl_token.totalSupply() == power
     chain.pending_timestamp += 8 * WEEK
     chain.mine()
-    assert ve_yfi.totalSupply() < power
-    assert ve_yfi.totalSupply() == ve_yfi.balanceOf(alice)
+    assert vl_token.totalSupply() < power
+    assert vl_token.totalSupply() == vl_token.balanceOf(alice)
 
-    ve_yfi.checkpoint(sender=alice)
-    assert ve_yfi.totalSupply() == ve_yfi.balanceOf(alice)
+    vl_token.checkpoint(sender=alice)
+    assert vl_token.totalSupply() == vl_token.balanceOf(alice)
 
-    ve_yfi.modify_lock(amount, 0, sender=alice)
+    vl_token.modify_lock(amount, 0, sender=alice)
     chain.pending_timestamp += WEEK
 
-    assert approx(ve_yfi.totalSupply(), rel=10e-14) == ve_yfi.balanceOf(alice)
-    assert ve_yfi.totalSupply() == ve_yfi.balanceOf(alice)
+    assert approx(vl_token.totalSupply(), rel=10e-14) == vl_token.balanceOf(alice)
+    assert vl_token.totalSupply() == vl_token.balanceOf(alice)
 
 
-def test_lock_slightly_over_limit_is_rounded_down(chain, accounts, yfi, ve_yfi):
+def test_lock_slightly_over_limit_is_rounded_down(chain, accounts, token, vl_token):
     alice = accounts[0]
     amount = 1000 * 10**18
     power = amount // MAXTIME * MAXTIME
 
-    yfi.mint(alice, amount * 20, sender=alice)
-    yfi.approve(ve_yfi.address, amount * 20, sender=alice)
+    token.mint(alice, amount * 20, sender=alice)
+    token.approve(vl_token.address, amount * 20, sender=alice)
 
     now = chain.blocks.head.timestamp
     unlock_time = now + MAXTIME + WEEK + 3600
-    ve_yfi.modify_lock(amount, unlock_time, sender=alice)  # 4 years ++
-    assert ve_yfi.point_history(alice.address, 1).slope == 0
-    assert ve_yfi.balanceOf(alice) == power
+    vl_token.modify_lock(amount, unlock_time, sender=alice)  # 4 years ++
+    assert vl_token.point_history(alice.address, 1).slope == 0
+    assert vl_token.balanceOf(alice) == power
     assert (
-        ve_yfi.slope_changes(ve_yfi, (chain.blocks.head.timestamp // WEEK + 1) * WEEK)
+        vl_token.slope_changes(vl_token, (chain.blocks.head.timestamp // WEEK + 1) * WEEK)
         != 0
     )
-    assert ve_yfi.slope_changes(
-        ve_yfi, (chain.blocks.head.timestamp // WEEK + 1) * WEEK
-    ) == ve_yfi.slope_changes(alice, (chain.blocks.head.timestamp // WEEK + 1) * WEEK)
+    assert vl_token.slope_changes(
+        vl_token, (chain.blocks.head.timestamp // WEEK + 1) * WEEK
+    ) == vl_token.slope_changes(alice, (chain.blocks.head.timestamp // WEEK + 1) * WEEK)
     chain.pending_timestamp += 2 * DAY
     chain.mine()
-    ve_yfi.modify_lock(amount, 0, sender=alice)  # lock some more
-    assert ve_yfi.balanceOf(alice) == (amount * 2) // MAXTIME * MAXTIME
+    vl_token.modify_lock(amount, 0, sender=alice)  # lock some more
+    assert vl_token.balanceOf(alice) == (amount * 2) // MAXTIME * MAXTIME
     chain.pending_timestamp += WEEK
     chain.mine()
-    assert ve_yfi.balanceOf(alice) < (amount * 2) // MAXTIME * MAXTIME
+    assert vl_token.balanceOf(alice) < (amount * 2) // MAXTIME * MAXTIME
 
 
-def test_get_prior_votes(chain, accounts, yfi, ve_yfi):
+def test_get_prior_votes(chain, accounts, token, vl_token):
     alice = accounts[0]
     amount = 1000 * 10**18
     power = amount // MAXTIME * MAXTIME
-    yfi.mint(alice, amount * 20, sender=alice)
-    yfi.approve(ve_yfi.address, amount * 20, sender=alice)
+    token.mint(alice, amount * 20, sender=alice)
+    token.approve(vl_token.address, amount * 20, sender=alice)
 
     now = chain.blocks.head.timestamp
     unlock_time = now + MAXTIME + WEEK + 4
-    ve_yfi.modify_lock(amount, unlock_time, sender=alice)  # 4 years ++
+    vl_token.modify_lock(amount, unlock_time, sender=alice)  # 4 years ++
 
     for _ in range(5 * 7 * 24):
         chain.pending_timestamp += H - 1
         chain.mine()
 
-    assert ve_yfi.getPriorVotes(alice, chain.blocks.head.number) < power
+    assert vl_token.getPriorVotes(alice, chain.blocks.head.number) < power
 
 
-def test_lock_over_limit_goes_to_zero(chain, accounts, yfi, ve_yfi):
+def test_lock_over_limit_goes_to_zero(chain, accounts, token, vl_token):
     alice = accounts[0]
     amount = 1000 * 10**18
     power = amount // MAXTIME * MAXTIME
-    yfi.mint(alice, amount * 20, sender=alice)
-    yfi.approve(ve_yfi.address, amount * 20, sender=alice)
+    token.mint(alice, amount * 20, sender=alice)
+    token.approve(vl_token.address, amount * 20, sender=alice)
 
     now = chain.blocks.head.timestamp
     unlock_time = now + MAXTIME + WEEK + 10
-    ve_yfi.modify_lock(amount, unlock_time, sender=alice)  # 4 years ++
-    assert ve_yfi.point_history(alice.address, 1).slope == 0
-    assert ve_yfi.balanceOf(alice) == power
+    vl_token.modify_lock(amount, unlock_time, sender=alice)  # 4 years ++
+    assert vl_token.point_history(alice.address, 1).slope == 0
+    assert vl_token.balanceOf(alice) == power
     assert (
-        ve_yfi.slope_changes(ve_yfi, (chain.blocks.head.timestamp // WEEK + 1) * WEEK)
+        vl_token.slope_changes(vl_token, (chain.blocks.head.timestamp // WEEK + 1) * WEEK)
         != 0
     )
     chain.pending_timestamp += MAXTIME + WEEK
     chain.mine()
-    assert ve_yfi.balanceOf(alice) == 0
-    assert pytest.approx(ve_yfi.totalSupply(), abs=10**8) == 0
+    assert vl_token.balanceOf(alice) == 0
+    assert pytest.approx(vl_token.totalSupply(), abs=10**8) == 0
 
 
-def test_multiple_lock_decay(accounts, yfi, ve_yfi):
+def test_multiple_lock_decay(accounts, token, vl_token):
     DURATION = MAXTIME // len(accounts)
 
     now = chain.blocks.head.timestamp
     for i in range(len(accounts)):
         account = accounts[i]
         amount = 10**22
-        yfi.mint(account, amount, sender=account)
-        yfi.approve(ve_yfi.address, amount, sender=account)
-        ve_yfi.modify_lock(amount, (DURATION * (i + 1)) + now, sender=account)
+        token.mint(account, amount, sender=account)
+        token.approve(vl_token.address, amount, sender=account)
+        vl_token.modify_lock(amount, (DURATION * (i + 1)) + now, sender=account)
     balance_sum = 0
     for i in range(len(accounts)):
-        balance_sum += ve_yfi.balanceOf(accounts[i])
-    assert pytest.approx(ve_yfi.totalSupply(), 10**14) == balance_sum
-    assert ve_yfi.totalSupply() == balance_sum
+        balance_sum += vl_token.balanceOf(accounts[i])
+    assert pytest.approx(vl_token.totalSupply(), 10**14) == balance_sum
+    assert vl_token.totalSupply() == balance_sum
     # Test decay
     for i in range(len(accounts)):
         chain.pending_timestamp += DURATION
         chain.mine()
         balance_sum = 0
         for i in range(len(accounts)):
-            balance_sum += ve_yfi.balanceOf(accounts[i])
-        assert pytest.approx(ve_yfi.totalSupply(), 10**14) == balance_sum
-        assert ve_yfi.totalSupply() == balance_sum
-    assert ve_yfi.totalSupply() == 0
+            balance_sum += vl_token.balanceOf(accounts[i])
+        assert pytest.approx(vl_token.totalSupply(), 10**14) == balance_sum
+        assert vl_token.totalSupply() == balance_sum
+    assert vl_token.totalSupply() == 0
 
 
-def test_voting_powers(chain, accounts, yfi, ve_yfi):
+def test_voting_powers(chain, accounts, token, vl_token):
     """
     Test voting power in the following scenario.
     Alice:
@@ -172,17 +172,17 @@ def test_voting_powers(chain, accounts, yfi, ve_yfi):
     """
     alice, bob = accounts[:2]
     amount = 1000 * 10**18
-    yfi.mint(bob, amount, sender=bob)
-    yfi.mint(alice, amount, sender=alice)
+    token.mint(bob, amount, sender=bob)
+    token.mint(alice, amount, sender=alice)
 
     stages = {}
 
-    yfi.approve(ve_yfi.address, amount * 10, sender=alice)
-    yfi.approve(ve_yfi.address, amount * 10, sender=bob)
+    token.approve(vl_token.address, amount * 10, sender=alice)
+    token.approve(vl_token.address, amount * 10, sender=bob)
 
-    assert ve_yfi.totalSupply() == 0
-    assert ve_yfi.balanceOf(alice) == 0
-    assert ve_yfi.balanceOf(bob) == 0
+    assert vl_token.totalSupply() == 0
+    assert vl_token.balanceOf(alice) == 0
+    assert vl_token.balanceOf(bob) == 0
 
     # Move to timing which is good for testing - beginning of a UTC week
     chain.pending_timestamp += (
@@ -197,17 +197,17 @@ def test_voting_powers(chain, accounts, yfi, ve_yfi):
 
     stages["before_deposits"] = (chain.blocks.head.number, chain.blocks.head.timestamp)
 
-    ve_yfi.modify_lock(amount, chain.blocks.head.timestamp + WEEK, sender=alice)
+    vl_token.modify_lock(amount, chain.blocks.head.timestamp + WEEK, sender=alice)
     stages["alice_deposit"] = (chain.blocks.head.number, chain.blocks.head.timestamp)
 
     chain.pending_timestamp += H - 1
     chain.mine()
 
-    assert approx(ve_yfi.totalSupply(), rel=TOL) == amount // MAXTIME * (WEEK - 2 * H)
-    assert approx(ve_yfi.balanceOf(alice), rel=TOL) == amount // MAXTIME * (
+    assert approx(vl_token.totalSupply(), rel=TOL) == amount // MAXTIME * (WEEK - 2 * H)
+    assert approx(vl_token.balanceOf(alice), rel=TOL) == amount // MAXTIME * (
         WEEK - 2 * H
     )
-    assert ve_yfi.balanceOf(bob) == 0
+    assert vl_token.balanceOf(bob) == 0
     t0 = chain.blocks.head.timestamp
 
     stages["alice_in_0"] = []
@@ -217,27 +217,27 @@ def test_voting_powers(chain, accounts, yfi, ve_yfi):
             chain.pending_timestamp += H - 1
             chain.mine()
         dt = chain.blocks.head.timestamp - t0
-        assert approx(ve_yfi.totalSupply(), rel=TOL) == amount // MAXTIME * max(
+        assert approx(vl_token.totalSupply(), rel=TOL) == amount // MAXTIME * max(
             WEEK - 2 * H - dt, 0
         )
 
-        assert approx(ve_yfi.balanceOf(alice), rel=TOL) == amount // MAXTIME * max(
+        assert approx(vl_token.balanceOf(alice), rel=TOL) == amount // MAXTIME * max(
             WEEK - 2 * H - dt, 0
         )
 
-        assert ve_yfi.balanceOf(bob) == 0
+        assert vl_token.balanceOf(bob) == 0
         stages["alice_in_0"].append(
             (chain.blocks.head.number, chain.blocks.head.timestamp)
         )
 
     chain.pending_timestamp += H - 1
 
-    assert ve_yfi.balanceOf(alice) == 0
-    ve_yfi.withdraw(sender=alice)
+    assert vl_token.balanceOf(alice) == 0
+    vl_token.withdraw(sender=alice)
     stages["alice_withdraw"] = (chain.blocks.head.number, chain.blocks.head.timestamp)
-    assert ve_yfi.totalSupply() == 0
-    assert ve_yfi.balanceOf(alice) == 0
-    assert ve_yfi.balanceOf(bob) == 0
+    assert vl_token.totalSupply() == 0
+    assert vl_token.balanceOf(alice) == 0
+    assert vl_token.balanceOf(bob) == 0
 
     chain.pending_timestamp += H - 1
     chain.mine()
@@ -248,19 +248,19 @@ def test_voting_powers(chain, accounts, yfi, ve_yfi):
     ) * WEEK - chain.blocks.head.timestamp
     chain.mine()
 
-    ve_yfi.modify_lock(amount, chain.blocks.head.timestamp + 2 * WEEK, sender=alice)
+    vl_token.modify_lock(amount, chain.blocks.head.timestamp + 2 * WEEK, sender=alice)
     stages["alice_deposit_2"] = (chain.blocks.head.number, chain.blocks.head.timestamp)
 
-    assert approx(ve_yfi.totalSupply(), rel=TOL) == amount // MAXTIME * 2 * WEEK
-    assert approx(ve_yfi.balanceOf(alice), rel=TOL) == amount // MAXTIME * 2 * WEEK
-    assert ve_yfi.balanceOf(bob) == 0
+    assert approx(vl_token.totalSupply(), rel=TOL) == amount // MAXTIME * 2 * WEEK
+    assert approx(vl_token.balanceOf(alice), rel=TOL) == amount // MAXTIME * 2 * WEEK
+    assert vl_token.balanceOf(bob) == 0
 
-    ve_yfi.modify_lock(amount, chain.blocks.head.timestamp + WEEK, sender=bob)
+    vl_token.modify_lock(amount, chain.blocks.head.timestamp + WEEK, sender=bob)
     stages["bob_deposit_2"] = (chain.blocks.head.number, chain.blocks.head.timestamp)
 
-    assert approx(ve_yfi.totalSupply(), rel=TOL) == amount // MAXTIME * 3 * WEEK
-    assert approx(ve_yfi.balanceOf(alice), rel=TOL) == amount // MAXTIME * 2 * WEEK
-    assert approx(ve_yfi.balanceOf(bob), rel=TOL) == amount // MAXTIME * WEEK
+    assert approx(vl_token.totalSupply(), rel=TOL) == amount // MAXTIME * 3 * WEEK
+    assert approx(vl_token.balanceOf(alice), rel=TOL) == amount // MAXTIME * 2 * WEEK
+    assert approx(vl_token.balanceOf(bob), rel=TOL) == amount // MAXTIME * WEEK
 
     t0 = chain.blocks.head.timestamp
     chain.pending_timestamp += H - 1
@@ -274,9 +274,9 @@ def test_voting_powers(chain, accounts, yfi, ve_yfi):
             chain.pending_timestamp += H - 1
             chain.mine()
         dt = chain.blocks.head.timestamp - t0
-        w_total = ve_yfi.totalSupply()
-        w_alice = ve_yfi.balanceOf(alice)
-        w_bob = ve_yfi.balanceOf(bob)
+        w_total = vl_token.totalSupply()
+        w_alice = vl_token.balanceOf(alice)
+        w_bob = vl_token.balanceOf(bob)
         assert w_total == w_alice + w_bob
         assert approx(w_alice, rel=TOL) == amount // MAXTIME * max(2 * WEEK - dt, 0)
         assert approx(w_bob, rel=TOL) == amount // MAXTIME * max(WEEK - dt, 0)
@@ -287,14 +287,14 @@ def test_voting_powers(chain, accounts, yfi, ve_yfi):
     chain.pending_timestamp += H - 1
     chain.mine()
 
-    ve_yfi.withdraw(sender=bob)
+    vl_token.withdraw(sender=bob)
     t0 = chain.blocks.head.timestamp
     stages["bob_withdraw_1"] = (chain.blocks.head.number, chain.blocks.head.timestamp)
-    w_total = ve_yfi.totalSupply()
-    w_alice = ve_yfi.balanceOf(alice)
+    w_total = vl_token.totalSupply()
+    w_alice = vl_token.balanceOf(alice)
     assert w_alice == w_total
     assert approx(w_total, rel=TOL) == amount // MAXTIME * (WEEK - 2 * H)
-    assert ve_yfi.balanceOf(bob) == 0
+    assert vl_token.balanceOf(bob) == 0
 
     chain.pending_timestamp += H - 1
     chain.mine()
@@ -305,16 +305,16 @@ def test_voting_powers(chain, accounts, yfi, ve_yfi):
             chain.pending_timestamp += H - 1
             chain.mine()
         dt = chain.blocks.head.timestamp - t0
-        w_total = ve_yfi.totalSupply()
-        w_alice = ve_yfi.balanceOf(alice)
+        w_total = vl_token.totalSupply()
+        w_alice = vl_token.balanceOf(alice)
         assert w_total == w_alice
         assert approx(w_total, rel=TOL) == amount // MAXTIME * max(WEEK - dt - 2 * H, 0)
-        assert ve_yfi.balanceOf(bob) == 0
+        assert vl_token.balanceOf(bob) == 0
         stages["alice_in_2"].append(
             (chain.blocks.head.number, chain.blocks.head.timestamp)
         )
 
-    ve_yfi.withdraw(sender=alice)
+    vl_token.withdraw(sender=alice)
     stages["alice_withdraw_2"] = (chain.blocks.head.number, chain.blocks.head.timestamp)
 
     chain.pending_timestamp += H - 1
@@ -322,26 +322,26 @@ def test_voting_powers(chain, accounts, yfi, ve_yfi):
 
     stages["bob_withdraw_2"] = (chain.blocks.head.number, chain.blocks.head.timestamp)
 
-    assert ve_yfi.totalSupply() == 0
-    assert ve_yfi.balanceOf(alice) == 0
-    assert ve_yfi.balanceOf(bob) == 0
+    assert vl_token.totalSupply() == 0
+    assert vl_token.balanceOf(alice) == 0
+    assert vl_token.balanceOf(bob) == 0
 
     # Now test historical getPriorVotes and others
 
-    assert ve_yfi.getPriorVotes(alice, stages["before_deposits"][0]) == 0
-    assert ve_yfi.getPriorVotes(bob, stages["before_deposits"][0]) == 0
-    assert ve_yfi.totalSupplyAt(stages["before_deposits"][0]) == 0
+    assert vl_token.getPriorVotes(alice, stages["before_deposits"][0]) == 0
+    assert vl_token.getPriorVotes(bob, stages["before_deposits"][0]) == 0
+    assert vl_token.totalSupplyAt(stages["before_deposits"][0]) == 0
 
-    w_alice = ve_yfi.getPriorVotes(alice, stages["alice_deposit"][0])
+    w_alice = vl_token.getPriorVotes(alice, stages["alice_deposit"][0])
     assert approx(w_alice, rel=TOL) == amount // MAXTIME * (WEEK - H)
-    assert ve_yfi.getPriorVotes(bob, stages["alice_deposit"][0]) == 0
-    w_total = ve_yfi.totalSupplyAt(stages["alice_deposit"][0])
+    assert vl_token.getPriorVotes(bob, stages["alice_deposit"][0]) == 0
+    w_total = vl_token.totalSupplyAt(stages["alice_deposit"][0])
     assert w_alice == w_total
 
     for i, (block, t) in enumerate(stages["alice_in_0"]):
-        w_alice = ve_yfi.getPriorVotes(alice, block)
-        w_bob = ve_yfi.getPriorVotes(bob, block)
-        w_total = ve_yfi.totalSupplyAt(block)
+        w_alice = vl_token.getPriorVotes(alice, block)
+        w_bob = vl_token.getPriorVotes(bob, block)
+        w_total = vl_token.totalSupplyAt(block)
         assert w_bob == 0
         assert w_alice == w_total
         if w_alice == 0:
@@ -352,30 +352,30 @@ def test_voting_powers(chain, accounts, yfi, ve_yfi):
         )  # Rounding error of 1 block is possible, and we have 1h blocks
         assert approx(w_alice, rel=error_1h) == amount // MAXTIME * time_left
 
-    w_total = ve_yfi.totalSupplyAt(stages["alice_withdraw"][0])
-    w_alice = ve_yfi.getPriorVotes(alice, stages["alice_withdraw"][0])
-    w_bob = ve_yfi.getPriorVotes(bob, stages["alice_withdraw"][0])
+    w_total = vl_token.totalSupplyAt(stages["alice_withdraw"][0])
+    w_alice = vl_token.getPriorVotes(alice, stages["alice_withdraw"][0])
+    w_bob = vl_token.getPriorVotes(bob, stages["alice_withdraw"][0])
     assert w_alice == w_bob == w_total == 0
 
-    w_total = ve_yfi.totalSupplyAt(stages["alice_deposit_2"][0])
-    w_alice = ve_yfi.getPriorVotes(alice, stages["alice_deposit_2"][0])
-    w_bob = ve_yfi.getPriorVotes(bob, stages["alice_deposit_2"][0])
+    w_total = vl_token.totalSupplyAt(stages["alice_deposit_2"][0])
+    w_alice = vl_token.getPriorVotes(alice, stages["alice_deposit_2"][0])
+    w_bob = vl_token.getPriorVotes(bob, stages["alice_deposit_2"][0])
     assert approx(w_total, rel=TOL) == amount // MAXTIME * 2 * WEEK
     assert w_total == w_alice
     assert w_bob == 0
 
-    w_total = ve_yfi.totalSupplyAt(stages["bob_deposit_2"][0])
-    w_alice = ve_yfi.getPriorVotes(alice, stages["bob_deposit_2"][0])
-    w_bob = ve_yfi.getPriorVotes(bob, stages["bob_deposit_2"][0])
+    w_total = vl_token.totalSupplyAt(stages["bob_deposit_2"][0])
+    w_alice = vl_token.getPriorVotes(alice, stages["bob_deposit_2"][0])
+    w_bob = vl_token.getPriorVotes(bob, stages["bob_deposit_2"][0])
     assert w_total == w_alice + w_bob
     assert approx(w_total, rel=TOL) == amount // MAXTIME * 3 * WEEK
     assert approx(w_alice, rel=TOL) == amount // MAXTIME * 2 * WEEK
 
     t0 = stages["bob_deposit_2"][1]
     for i, (block, t) in enumerate(stages["alice_bob_in_2"]):
-        w_alice = ve_yfi.getPriorVotes(alice, block)
-        w_bob = ve_yfi.getPriorVotes(bob, block)
-        w_total = ve_yfi.totalSupplyAt(block)
+        w_alice = vl_token.getPriorVotes(alice, block)
+        w_bob = vl_token.getPriorVotes(bob, block)
+        w_total = vl_token.totalSupplyAt(block)
         assert w_total == w_alice + w_bob
         dt = t - t0
         error_1h = H / (
@@ -386,18 +386,18 @@ def test_voting_powers(chain, accounts, yfi, ve_yfi):
         )
         assert approx(w_bob, rel=error_1h) == amount // MAXTIME * max(WEEK - dt, 0)
 
-    w_total = ve_yfi.totalSupplyAt(stages["bob_withdraw_1"][0])
-    w_alice = ve_yfi.getPriorVotes(alice, stages["bob_withdraw_1"][0])
-    w_bob = ve_yfi.getPriorVotes(bob, stages["bob_withdraw_1"][0])
+    w_total = vl_token.totalSupplyAt(stages["bob_withdraw_1"][0])
+    w_alice = vl_token.getPriorVotes(alice, stages["bob_withdraw_1"][0])
+    w_bob = vl_token.getPriorVotes(bob, stages["bob_withdraw_1"][0])
     assert w_total == w_alice
     assert approx(w_total, rel=TOL) == amount // MAXTIME * (WEEK - 2 * H)
     assert w_bob == 0
 
     t0 = stages["bob_withdraw_1"][1]
     for i, (block, t) in enumerate(stages["alice_in_2"]):
-        w_alice = ve_yfi.getPriorVotes(alice, block)
-        w_bob = ve_yfi.getPriorVotes(bob, block)
-        w_total = ve_yfi.totalSupplyAt(block)
+        w_alice = vl_token.getPriorVotes(alice, block)
+        w_bob = vl_token.getPriorVotes(bob, block)
+        w_total = vl_token.totalSupplyAt(block)
         assert w_total == w_alice
         assert w_bob == 0
         dt = t - t0
@@ -408,20 +408,20 @@ def test_voting_powers(chain, accounts, yfi, ve_yfi):
             WEEK - dt - 2 * H, 0
         )
 
-    w_total = ve_yfi.totalSupplyAt(stages["bob_withdraw_2"][0])
-    w_alice = ve_yfi.getPriorVotes(alice, stages["bob_withdraw_2"][0])
-    w_bob = ve_yfi.getPriorVotes(bob, stages["bob_withdraw_2"][0])
+    w_total = vl_token.totalSupplyAt(stages["bob_withdraw_2"][0])
+    w_alice = vl_token.getPriorVotes(alice, stages["bob_withdraw_2"][0])
+    w_bob = vl_token.getPriorVotes(bob, stages["bob_withdraw_2"][0])
     assert w_total == w_alice == w_bob == 0
 
 
-def test_early_exit(chain, accounts, yfi, ve_yfi):
+def test_early_exit(chain, accounts, token, vl_token):
     alice, bob = accounts[:2]
     amount = 1000 * 10**18
-    yfi.mint(bob, amount, sender=bob)
-    yfi.mint(alice, amount, sender=alice)
+    token.mint(bob, amount, sender=bob)
+    token.mint(alice, amount, sender=alice)
 
-    yfi.approve(ve_yfi.address, amount * 10, sender=alice)
-    yfi.approve(ve_yfi.address, amount * 10, sender=bob)
+    token.approve(vl_token.address, amount * 10, sender=alice)
+    token.approve(vl_token.address, amount * 10, sender=bob)
 
     chain.pending_timestamp += (
         chain.blocks.head.timestamp // WEEK + 1
@@ -429,53 +429,53 @@ def test_early_exit(chain, accounts, yfi, ve_yfi):
     chain.mine()
 
     chain.pending_timestamp += H
-    ve_yfi.modify_lock(amount, chain.blocks.head.timestamp + 2 * WEEK, sender=alice)
-    ve_yfi.modify_lock(amount, chain.blocks.head.timestamp + WEEK, sender=bob)
-    ve_yfi.withdraw(sender=bob)
-    assert ve_yfi.totalSupply() == ve_yfi.balanceOf(alice)
+    vl_token.modify_lock(amount, chain.blocks.head.timestamp + 2 * WEEK, sender=alice)
+    vl_token.modify_lock(amount, chain.blocks.head.timestamp + WEEK, sender=bob)
+    vl_token.withdraw(sender=bob)
+    assert vl_token.totalSupply() == vl_token.balanceOf(alice)
 
     point_history_1 = dict(
-        zip(["bias", "slope", "ts", "blk"], ve_yfi.point_history(ve_yfi, 1))
+        zip(["bias", "slope", "ts", "blk"], vl_token.point_history(vl_token, 1))
     )
     point_history_3 = dict(
-        zip(["bias", "slope", "ts", "blk"], ve_yfi.point_history(ve_yfi, 3))
+        zip(["bias", "slope", "ts", "blk"], vl_token.point_history(vl_token, 3))
     )
     assert approx(point_history_1["bias"], rel=10e-4) == point_history_3["bias"]
     assert approx(point_history_1["slope"], rel=10e-4) == point_history_3["slope"]
-    ve_yfi.withdraw(sender=alice)
-    assert ve_yfi.totalSupply() == 0
+    vl_token.withdraw(sender=alice)
+    assert vl_token.totalSupply() == 0
     point_history_4 = dict(
-        zip(["bias", "slope", "ts", "blk"], ve_yfi.point_history(ve_yfi, 4))
+        zip(["bias", "slope", "ts", "blk"], vl_token.point_history(vl_token, 4))
     )
     assert point_history_4["ts"] == chain.blocks.head.timestamp
     assert point_history_4["bias"] == 0
     assert point_history_4["slope"] == 0
 
 
-def test_total_supply_in_the_past(chain, accounts, yfi, ve_yfi):
+def test_total_supply_in_the_past(chain, accounts, token, vl_token):
     alice = accounts[0]
     amount = 1000 * 10**18
-    yfi.mint(alice, amount * 20, sender=alice)
-    yfi.approve(ve_yfi.address, amount * 20, sender=alice)
+    token.mint(alice, amount * 20, sender=alice)
+    token.approve(vl_token.address, amount * 20, sender=alice)
 
     now = chain.blocks.head.timestamp
     unlock_time = now + MAXTIME
-    ve_yfi.modify_lock(amount, unlock_time, sender=alice)
+    vl_token.modify_lock(amount, unlock_time, sender=alice)
     checkpoint = chain.blocks.head.timestamp
-    checkpoint_total_supply = ve_yfi.totalSupply()
+    checkpoint_total_supply = vl_token.totalSupply()
 
     chain.pending_timestamp += WEEK
-    ve_yfi.modify_lock(amount, 0, sender=alice)  # lock some more
-    assert checkpoint_total_supply == ve_yfi.totalSupply(checkpoint)
+    vl_token.modify_lock(amount, 0, sender=alice)  # lock some more
+    assert checkpoint_total_supply == vl_token.totalSupply(checkpoint)
 
 
-def test_lock_cant_exceed_reply_range(chain, accounts, yfi, ve_yfi):
+def test_lock_cant_exceed_reply_range(chain, accounts, token, vl_token):
     alice = accounts[0]
     amount = 1000 * 10**18
     power = amount // MAXTIME * MAXTIME
-    yfi.mint(alice, amount * 20, sender=alice)
-    yfi.approve(ve_yfi.address, amount * 20, sender=alice)
+    token.mint(alice, amount * 20, sender=alice)
+    token.approve(vl_token.address, amount * 20, sender=alice)
     now = chain.blocks.head.timestamp
     unlock_time = now + 530 * WEEK
     with ape.reverts():
-        ve_yfi.modify_lock(amount, unlock_time, sender=alice)
+        vl_token.modify_lock(amount, unlock_time, sender=alice)

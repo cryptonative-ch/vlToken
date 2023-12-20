@@ -43,8 +43,8 @@ def bunny(accounts):
 
 
 @pytest.fixture
-def yfi(project, gov):
-    yield gov.deploy(project.Token, "YFI")
+def token(project, gov):
+    yield gov.deploy(project.Token, "TOKEN")
 
 
 @pytest.fixture
@@ -56,35 +56,7 @@ def create_token(project, gov):
 
 
 @pytest.fixture
-def ve_yfi_rewards(ve_yfi_and_reward_pool):
-    (_, ve_yfi_rewards) = ve_yfi_and_reward_pool
-    yield ve_yfi_rewards
+def vl_token_rewards(vl_token_and_reward_pool):
+    (_, vl_token_rewards) = vl_token_and_reward_pool
+    yield vl_token_rewards
 
-
-@pytest.fixture
-def gauge_factory(project, gov, ve_yfi, d_yfi, ve_yfi_d_yfi_pool):
-    gauge = gov.deploy(project.Gauge, ve_yfi, d_yfi, ve_yfi_d_yfi_pool)
-    yield gov.deploy(project.GaugeFactory, gauge)
-
-
-@pytest.fixture
-def registry(project, gov, ve_yfi, yfi, gauge_factory, ve_yfi_rewards):
-    yield gov.deploy(project.Registry, ve_yfi, yfi, gauge_factory, ve_yfi_rewards)
-
-
-@pytest.fixture
-def create_vault(project, gov):
-    def create_vault():
-        return gov.deploy(project.Token, "Yearn vault")
-
-    yield create_vault
-
-
-@pytest.fixture
-def create_gauge(registry, gauge_factory, gov, project):
-    def create_gauge(vault):
-        tx = registry.addVaultToRewards(vault, gov, sender=gov)
-        gauge_address = tx.decode_logs(gauge_factory.GaugeCreated)[0].gauge
-        return project.Gauge.at(gauge_address)
-
-    yield create_gauge
