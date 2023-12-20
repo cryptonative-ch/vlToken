@@ -4,10 +4,10 @@ from ape import chain
 H = 3600
 DAY = 86400
 WEEK = 7 * DAY
-MAXTIME = 4 * 365 * 86400 // WEEK * WEEK
-TOL = 120 / WEEK
+MAXTIME = 1 * 365 * 86400 // WEEK * WEEK  # 1 year
 AMOUNT = 10**18
 POWER = AMOUNT // MAXTIME * MAXTIME
+MAX_N_WEEKS = 208
 
 
 @pytest.fixture(autouse=True)
@@ -24,7 +24,7 @@ def bob(accounts, token, vl_token):
     token.mint(bob, AMOUNT * 20, sender=bob)
     token.approve(vl_token.address, AMOUNT * 20, sender=bob)
     now = chain.blocks.head.timestamp
-    unlock_time = now + WEEK * 520
+    unlock_time = now + WEEK * MAX_N_WEEKS
     vl_token.modify_lock(AMOUNT, unlock_time, sender=bob)
     yield bob
 
@@ -41,16 +41,19 @@ def alice(accounts, token, vl_token):
 def test_new_lock_less_than_max(alice, bob, vl_token):
     assert vl_token.totalSupply() == POWER
     now = chain.blocks.head.timestamp
-    unlock_time = now + MAXTIME // 20
+    duration = MAXTIME // 5  # 1/5 of 1 year
+    unlock_time = now + duration 
     vl_token.modify_lock(AMOUNT, unlock_time, sender=alice)
-    assert pytest.approx(vl_token.balanceOf(alice), rel=10e-2) == (AMOUNT / 20)
+    # rel is depending on the ratio of the duration and the floor of the duration to full weeks
+    # with short duration, ratio goes up, so rel must be bigger to pass
+    assert pytest.approx(vl_token.balanceOf(alice), rel=0.05) == (AMOUNT / 5)
 
     point = vl_token.point_history(alice, 1)
     lock = vl_token.locked(alice)
     assert point.slope == AMOUNT // MAXTIME
     assert lock.end == unlock_time // WEEK * WEEK
 
-    chain.pending_timestamp += MAXTIME // 20
+    chain.pending_timestamp += duration
     chain.mine()
 
     assert vl_token.balanceOf(alice) == 0

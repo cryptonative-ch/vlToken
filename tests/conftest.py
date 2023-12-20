@@ -15,7 +15,7 @@ def token(accounts, project):
 
 @pytest.fixture
 def vl_token_and_treasury(accounts, project, token):
-    # calculate the reward pool address to pass to vl_token
+    # calculate the treasury address to pass to vl_token
     treasury_address = to_checksum_address(
         generate_contract_address(
             to_canonical_address(str(accounts[0])), accounts[0].nonce + 1
@@ -25,9 +25,7 @@ def vl_token_and_treasury(accounts, project, token):
     start_time = (
         chain.pending_timestamp + 7 * 3600 * 24
     )  # MUST offset by a week otherwise token distributed are lost since no lock has been made yet.
-    treasury = project.RewardPool.deploy(vl_token, start_time, sender=accounts[0])
-    assert str(treasury) == treasury_address, "broken setup"
-    yield vl_token, treasury
+    yield vl_token, treasury_address
 
 
 @pytest.fixture

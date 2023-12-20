@@ -65,7 +65,7 @@ WEEK: constant(uint256) = 7 * 86400  # all future times are rounded by week
 MAX_LOCK_DURATION: constant(uint256) = 1 * 365 * 86400 / WEEK * WEEK  # 1 year
 SCALE: constant(uint256) = 10 ** 18
 MAX_PENALTY_RATIO: constant(uint256) = SCALE * 3 / 4  # 75% for early exit of max lock
-MAX_N_WEEKS: constant(uint256) = 208 # max lock is 4 years
+MAX_N_WEEKS: constant(uint256) = 210 # max lock is 4 years
 
 supply: public(uint256)
 locked: public(HashMap[address, LockedBalance])
@@ -265,7 +265,7 @@ def modify_lock(amount: uint256, unlock_time: uint256, user: address = msg.sende
     if msg.sender == user:
         if unlock_time != 0:
             unlock_week = self.round_to_week(unlock_time)  # locktime is rounded down to weeks
-            assert ((unlock_week - self.round_to_week(block.timestamp)) / WEEK) < MAX_N_WEEKS # lock can't exceed 10 years
+            assert ((unlock_week - self.round_to_week(block.timestamp)) / WEEK) < MAX_N_WEEKS # lock can't exceed 4 years
             assert unlock_week > block.timestamp  #  dev: unlock time must be in the future
             if unlock_week - block.timestamp < MAX_LOCK_DURATION:
                 assert unlock_week > old_lock.end  # dev: can only increase lock duration
