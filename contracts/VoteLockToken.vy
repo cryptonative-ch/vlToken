@@ -328,8 +328,8 @@ def withdraw() -> Withdrawn:
     assert TOKEN.transfer(msg.sender, old_locked.amount - penalty)
     
     if penalty > 0:
-        assert TOKEN.approve(TREASURY.address, penalty)
-        assert TREASURY.transfer(msg.sender, penalty)
+        assert TOKEN.approve(TREASURY, penalty)
+        assert TOKEN.transfer(msg.sender, penalty)
 
         log Penalty(msg.sender, penalty, block.timestamp)
     
