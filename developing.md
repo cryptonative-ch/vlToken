@@ -1,2 +1,0 @@
-# VotingYFI and RewardPool
-

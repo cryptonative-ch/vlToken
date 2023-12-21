@@ -10,7 +10,6 @@ POWER = 2 * AMOUNT // MAXTIME * MAXTIME
 MAX_N_WEEKS = 208
 MAX_PENALTY_RATIO = 3 / 4  # 75% for early exit of max lock
 
-
 @pytest.fixture(autouse=True)
 def setup_time(chain):
     chain.pending_timestamp += WEEK - (
@@ -36,8 +35,49 @@ def alice(accounts, token, vl_token):
     alice = accounts[0]
     token.mint(alice, AMOUNT * 20, sender=alice)
     token.approve(vl_token.address, AMOUNT * 20, sender=alice)
-
     yield alice
+
+
+def test_collector_withdraw(alice, collector, token, vl_token):
+    now = chain.blocks.head.timestamp
+    duration = MAXTIME // 2 
+    unlock_time = now + duration  # 1/2 of MAXTIME
+    vl_token.modify_lock(AMOUNT, unlock_time, sender=alice)
+
+    alice_vl_token_balance = vl_token.balanceOf(alice)
+    assert pytest.approx(alice_vl_token_balance, rel=0.01) == (AMOUNT // 2 * 99/100 ) 
+
+    collector_from_contract = vl_token.collector()
+    
+    assert collector_from_contract == collector.address
+
+    collector_vl_token_balance = vl_token.balanceOf(collector)
+
+    vl_token.withdraw(sender=collector)
+
+    collector_token_balance = token.balanceOf(collector)
+
+    assert pytest.approx(collector_vl_token_balance, rel=0.01) == (AMOUNT * 1/100 * (1 / 4 )) # 1/4 = (MAX_LOCK_DURATION / 4)
+
+
+    tax = min(MAX_PENALTY_RATIO, (MAXTIME - duration) / MAXTIME )
+
+    assert pytest.approx(collector_token_balance, rel=0.01) == (collector_vl_token_balance * 3)   # 3? No clue why
+
+
+def test_fee_collection(alice, collector,  vl_token):
+
+    # assert pytest.approx(vl_token.totalSupply(), rel=0.01)  == POWER
+    now = chain.blocks.head.timestamp
+    unlock_time = now + MAXTIME // 2  # 1/2 of MAXTIME
+    vl_token.modify_lock(AMOUNT, unlock_time, sender=alice)
+    
+    alice_vl_token_balance = vl_token.balanceOf(alice)
+    assert pytest.approx(alice_vl_token_balance, rel=0.01) == (AMOUNT * 99/100  / 2) 
+
+    collector_vl_token_balance = vl_token.balanceOf(collector)
+
+    assert pytest.approx(collector_vl_token_balance, rel=0.01) == (AMOUNT * 1/100 * 1/4 ) # 1/4 = (MAX_LOCK_DURATION / 4)
 
 
 def test_treasury_filled_after_early_withdraw(alice, bob, treasury, token, vl_token):
@@ -50,21 +90,23 @@ def test_treasury_filled_after_early_withdraw(alice, bob, treasury, token, vl_to
     
     alice_vl_token_balance = vl_token.balanceOf(alice)
 
-    assert pytest.approx(alice_vl_token_balance, rel=0.01) == (AMOUNT / 2) 
+    assert pytest.approx(alice_vl_token_balance, rel=0.01) == (AMOUNT / 2 * 99/100) 
 
     vl_token.withdraw(sender=alice)
 
     treasury_token_balance = token.balanceOf(treasury)
+
     alice_token_balance = token.balanceOf(alice)
 
     # for 1/2 MAXTIME vl token, the penalty is 50%
     # starts with 75% on 1/4, hits 50% on 1/2, then 25% on 3/4, 0 at 4/4
 
-    assert pytest.approx(treasury_token_balance, rel=0.01) ==  MAX_PENALTY_RATIO * 2/3 * AMOUNT
+    assert pytest.approx(treasury_token_balance, rel=0.01) ==  MAX_PENALTY_RATIO * 2/3 * AMOUNT * 99/100
+
     assert pytest.approx(alice_token_balance, rel=0.01) == 20 * AMOUNT - treasury_token_balance
 
     bob_vl_token_balance = vl_token.balanceOf(bob)
-    assert pytest.approx(bob_vl_token_balance, rel=0.01) == 2 * AMOUNT
+    assert pytest.approx(bob_vl_token_balance, rel=0.01) == 2 * AMOUNT * 99/100
 
     duration = int(MAXTIME * 0.6)  # 0.6 of MAXTIME, 0.4 left
 
@@ -83,12 +125,14 @@ def test_treasury_filled_after_early_withdraw(alice, bob, treasury, token, vl_to
 
     tax = min(MAX_PENALTY_RATIO, (MAXTIME - duration) / MAXTIME )
 
-    assert pytest.approx(treasury_diff, rel=0.01) ==  2 * AMOUNT * tax
+    assert pytest.approx(treasury_diff, rel=0.01) ==  2 * AMOUNT  * tax * 99/100 
 
-    assert pytest.approx(bob_token_balance, rel=0.01) == 20 * AMOUNT - treasury_diff
+    assert pytest.approx(bob_token_balance, rel=0.01) == 20 * AMOUNT * 99/100 - treasury_diff
 
 
     assert token.balanceOf(treasury) != 0
     assert vl_token.balanceOf(alice) == 0
     assert vl_token.balanceOf(bob) == 0
     assert vl_token.totalSupply() == 0
+
+

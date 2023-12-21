@@ -24,7 +24,7 @@ def bob(accounts, token, vl_token):
     token.mint(bob, AMOUNT * 20, sender=bob)
     token.approve(vl_token.address, AMOUNT * 20, sender=bob)
     now = chain.blocks.head.timestamp
-    unlock_time = now + WEEK * MAX_N_WEEKS
+    unlock_time = now + MAXTIME
     vl_token.modify_lock(AMOUNT, unlock_time, sender=bob)
     yield bob
 

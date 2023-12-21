@@ -1,7 +1,7 @@
 # @version 0.3.7
 """
 @title Vote Locked TOKEN
-@author Curve Finance, Yearn Finance
+@author Curve Finance, Yearn Finance, mk
 @license MIT
 @notice
     Votes have a weight depending on time, so that users are
@@ -55,11 +55,11 @@ event Supply:
 
 event Initialized:
     token: ERC20
-    trasury: address
+    treasury: address
 
 TOKEN: immutable(ERC20)
 TREASURY: immutable(address)
-COLLECTOR: immutable('0x84bC1fC6204b959470BF8A00d871ff8988a3914A')
+COLLECTOR: immutable(address)
 
 DAY: constant(uint256) = 86400
 WEEK: constant(uint256) = 7 * 86400  # all future times are rounded by week
@@ -67,7 +67,8 @@ MAX_LOCK_DURATION: constant(uint256) = 1 * 365 * 86400 / WEEK * WEEK  # 1 year
 SCALE: constant(uint256) = 10 ** 18
 MAX_PENALTY_RATIO: constant(uint256) = SCALE * 3 / 4  # 75% for early exit of max lock
 MAX_N_WEEKS: constant(uint256) = 209 # max lock is 4 years
-TAX: constant(uint256) = 1
+FEE: constant(uint256) = 1
+
 
 supply: public(uint256)
 locked: public(HashMap[address, LockedBalance])
@@ -76,9 +77,10 @@ epoch: public(HashMap[address, uint256])
 point_history: public(HashMap[address, HashMap[uint256, Point]])  # epoch -> unsigned point
 slope_changes: public(HashMap[address, HashMap[uint256, int128]])  # time -> signed slope change
 
+collector_active: public(bool)
 
 @external
-def __init__(token: ERC20, treasury: address):
+def __init__(token: ERC20, treasury: address, collector: address):
     """
     @notice Contract constructor
     @param token TOKEN token address
@@ -86,6 +88,9 @@ def __init__(token: ERC20, treasury: address):
     """
     TOKEN = token
     TREASURY = treasury
+    COLLECTOR = collector
+    self.collector_active = True
+
     self.point_history[self][0].blk = block.number
     self.point_history[self][0].ts = block.timestamp
 
@@ -245,6 +250,7 @@ def checkpoint():
     self._checkpoint(empty(address), empty(LockedBalance), empty(LockedBalance))
 
 
+
 @external
 def modify_lock(amount: uint256, unlock_time: uint256, user: address = msg.sender) -> LockedBalance:
     """
@@ -260,7 +266,8 @@ def modify_lock(amount: uint256, unlock_time: uint256, user: address = msg.sende
     """
     old_lock: LockedBalance = self.locked[user]
     new_lock: LockedBalance = old_lock
-    new_lock.amount += amount
+    amount_add: uint256 = amount * (100-FEE) /100
+    new_lock.amount += amount_add
 
     unlock_week: uint256 = 0
     # only a user can modify their own unlock time
@@ -291,14 +298,34 @@ def modify_lock(amount: uint256, unlock_time: uint256, user: address = msg.sende
     self._checkpoint(user, old_lock, new_lock)
 
     if amount > 0:
-        assert TOKEN.transferFrom(msg.sender, self, amount * 100/99 )
-        assert TOKEN.transferFrom(msg.sender, COLLECTOR, amount * 100/1 ) 
+        assert TOKEN.transferFrom(msg.sender, self, amount)
+        
+        target: address = TREASURY
+
+        if self.collector_active:
+            target = COLLECTOR
+    
+        old_lock_col: LockedBalance = self.locked[target]
+        new_lock_col: LockedBalance = old_lock_col
+        new_lock_col.amount += amount - amount_add
+        new_lock_col.end = block.timestamp + (MAX_LOCK_DURATION / 4)
+
+        self.locked[target] = new_lock_col
+        self._checkpoint(target, old_lock_col, new_lock_col)
+
+
+        ## TODO  if not collector, send token to treasury
 
     log Supply(supply_before, supply_before + amount, block.timestamp)
     log ModifyLock(msg.sender, user, new_lock.amount, new_lock.end, block.timestamp)
 
     return new_lock
 
+@external
+def removeCollector() -> bool:
+    assert msg.sender == COLLECTOR
+    self.collector_active = False
+    return True
 
 @external
 def withdraw() -> Withdrawn:
@@ -541,6 +568,10 @@ def token() -> ERC20:
 def treasury() -> address:
     return TREASURY
 
+@view
+@external
+def collector() -> address:
+    return COLLECTOR
 
 @view
 @external
