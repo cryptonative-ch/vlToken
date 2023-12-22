@@ -5,10 +5,11 @@ This contracts are based on https://github.com/yearn/veYFI. The unnecessary cont
 Changes:
 
 * Exit fee, as Token, is collected into treasury (treasury should be an multisig, but can be an singel address)
+* 1 TOKEN locked for 1 year is 1 vlTOKEN (No 4 years locking)
 * 1% fee, in vlTOKEN, is taken by the author on every lock
-* The author fee can be deactivated, then is redirected to the multisig as vlToken
+* The author fee can be deactivated, then is redirected to the multisig as vlTOKEN
 
-**These changes are not audited, and this is like my second or third smart contract I ever worked on!**
+**🚩These changes are not audited,  this is my second or third smart contract I ever worked on and some test fail too!🚩**
 
 ## vlTOKEN
 
@@ -35,9 +36,9 @@ The penalty for exiting early is the following:
 ```
 So at most you are paying a 75% penalty that starts decreasing when your lock duration goes below 9 months.
 
-Some example fee calculation:
+Some example exit fee calculation:
 
-https://docs.google.com/spreadsheets/d/16ckI2Z388GQUFH9RgaAhp9ia1j99RewKTzu_KwlN9V0/edit#gid=1243950320
+https://docs.google.com/spreadsheets/d/16ckI2Z388GQUFH9RgaAhp9ia1j99RewKTzu_KwlN9V0/edit#gid=0
 
 ## vlTOKEN governance (suggestion)
 
@@ -50,7 +51,7 @@ Panalty from exit is collected in the treasury multisig.
 
 Treasury is spent on members proposal. Multisig is executing body.
 
-* set multisig treasury address in the vlTOKEN contract where the penalty is collected (at deploy)
+* sSet multisig treasury address in the vlTOKEN contract where the penalty is collected (at deploy)
 * Quorum is 20% at the start, can be changed by vote
 * Voting is on snapshot with vlTOKEN, but at some point should be fully on-chain. (Work to be done)
 
@@ -64,7 +65,7 @@ Treasury is spent on members proposal. Multisig is executing body.
 * A 3/5 multisig is used
 * Candidates have to be members
 * Candidates for the multisig have to send 1000 TOKEN to the treasury
-* The 15 Candidates with the most votes are eligible
+* The 15 candidates with the most votes are eligible
 * Out of the 15 candidates 5 are randomly drawn for the multisig
 
 ### Replacment on multisig
