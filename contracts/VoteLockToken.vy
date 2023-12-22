@@ -1,4 +1,4 @@
-# @version 0.3.7
+# @version 0.3.10
 """
 @title Vote Locked TOKEN
 @author Curve Finance, Yearn Finance, mk
@@ -56,6 +56,7 @@ event Supply:
 event Initialized:
     token: ERC20
     treasury: address
+    collector: address
 
 TOKEN: immutable(ERC20)
 TREASURY: immutable(address)
@@ -94,7 +95,7 @@ def __init__(token: ERC20, treasury: address, collector: address):
     self.point_history[self][0].blk = block.number
     self.point_history[self][0].ts = block.timestamp
 
-    log Initialized(token, treasury)
+    log Initialized(token, treasury, collector)
 
 
 @view

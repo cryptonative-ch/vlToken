@@ -5,6 +5,7 @@ plugins:
   - name: infura
   - name: tokens
   - name: etherscan
+  - name: arbitrum
 
 # require OpenZepplin Contracts
 dependencies:
@@ -26,6 +27,13 @@ solidity:
 default_ecosystem: ethereum
 
 ethereum:
+  default_network: mainnet-fork
+  mainnet:
+    default_provider: infura
+  mainnet_fork:
+    default_provider: foundry
+
+arbitrum:
   default_network: mainnet-fork
   mainnet:
     default_provider: infura
