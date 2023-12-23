@@ -85,7 +85,8 @@ def __init__(token: ERC20, treasury: address, collector: address):
     """
     @notice Contract constructor
     @param token TOKEN token address
-    @param treasury Treasury for early exit penalties
+    @param treasury Treasury address for early exit penalties
+    @param collector Collector address of author fee
     """
     TOKEN = token
     TREASURY = treasury
