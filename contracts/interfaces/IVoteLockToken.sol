@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-interface IVotingYFI is IERC20 {
+interface IVoteLockTocken is IERC20 {
     struct LockedBalance {
         int128 amount;
         uint256 end;
