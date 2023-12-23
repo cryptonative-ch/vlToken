@@ -302,21 +302,18 @@ def modify_lock(amount: uint256, unlock_time: uint256, user: address = msg.sende
     if amount > 0:
         assert TOKEN.transferFrom(msg.sender, self, amount)
         
-        target: address = TREASURY
+        lock_fee_address: address = TREASURY
 
         if self.collector_active:
-            target = COLLECTOR
+            look_fee_address = COLLECTOR
     
-        old_lock_col: LockedBalance = self.locked[target]
+        old_lock_col: LockedBalance = self.locked[lock_fee_address]
         new_lock_col: LockedBalance = old_lock_col
         new_lock_col.amount += amount - amount_add
         new_lock_col.end = block.timestamp + (MAX_LOCK_DURATION / 4)
 
-        self.locked[target] = new_lock_col
-        self._checkpoint(target, old_lock_col, new_lock_col)
-
-
-        ## TODO  if not collector, send token to treasury
+        self.locked[lock_fee_address] = new_lock_col
+        self._checkpoint(_look_fee_address, old_lock_col, new_lock_col)
 
     log Supply(supply_before, supply_before + amount, block.timestamp)
     log ModifyLock(msg.sender, user, new_lock.amount, new_lock.end, block.timestamp)
